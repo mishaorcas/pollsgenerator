@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Генератор опросов</title>
+    <style>
+        :root {
+            --bg: #14583a;
+            --panel: #ffffff;
+            --border: #b9ddcb;
+            --text: #1f3a2c;
+            --muted: #47685a;
+            --accent: #289e66;
+            --accent-soft: #e8f7ef;
+            --danger: #c0392b;
+            --hero-top: #39b97a;
+            --hero-mid: #1a7d4e;
+            --hint: #dff5ea;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: "Segoe UI", "Noto Sans", Arial, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(1200px 500px at 50% -100px, var(--hero-top), transparent 70%),
+                linear-gradient(180deg, var(--hero-mid), var(--bg));
+            padding: 24px 16px;
+            transition: background 180ms ease-out;
+        }
+
+        .app {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            color: #fff;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 30px;
+            margin-bottom: 6px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .status:not(:empty) {
+            min-height: 24px;
+            margin-bottom: 12px;
+        }
+
+        .hint {
+            color: var(--hint);
+            text-align: center;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .btn {
+            border: 1px solid transparent;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn.secondary {
+            background: #fff;
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            padding: 10px 14px;
+        }
+
+        .toggle input {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 16px;
+        }
+
+        .editor {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .editor-header {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            background: var(--accent-soft);
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 420px;
+            border: 0;
+            resize: vertical;
+            outline: 0;
+            padding: 14px;
+            line-height: 1.6;
+            font-family: "Cascadia Code", "Consolas", monospace;
+            font-size: 14px;
+        }
+
+        textarea[readonly] {
+            background: #f8fbfd;
+        }
+
+        .error-line {
+            min-height: 22px;
+            text-align: center;
+            margin-bottom: 12px;
+            color: #ffd6d2;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .error-line:empty {
+            margin-bottom: 0;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        .toast {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            background: #24323d;
+            color: #fff;
+            border-radius: 8px;
+            padding: 10px 14px;
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all 180ms ease-out;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+            pointer-events: none;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.error {
+            background: var(--danger);
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            textarea {
+                min-height: 320px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="app">
+        <header class="header">
+            <h1>✅ Генератор опросов</h1>
+        </header>
+
+        <p class="hint">Первая строка - вопрос, каждая следующая строка - вариант в формате: эмодзи и текст ответа. Горячие клавиши: Ctrl+Enter - сгенерировать JSON, Esc - очистить поля.</p>
+
+        <section class="panel toolbar">
+            <label class="toggle" for="multipleChoiceToggle">
+                <input type="checkbox" id="multipleChoiceToggle">
+                <span>⚡️ Опрос с чекбоксами</span>
+            </label>
+            <button class="btn" id="pollCopyBtn" type="button">Копировать JSON</button>
+            <button class="btn secondary" id="pollPasteBtn" type="button">Вставить из буфера</button>
+            <button class="btn secondary" id="pollClearBtn" type="button">Очистить всё</button>
+        </section>
+
+        <p class="error-line" id="pollError" aria-live="polite"></p>
+
+        <section class="panel grid">
+            <article class="editor">
+                <div class="editor-header">Текст опроса</div>
+                <label for="pollInputText" class="sr-only">Текст опроса</label>
+                <textarea id="pollInputText" spellcheck="false" placeholder="Вставьте опрос из обвеса..."></textarea>
+            </article>
+            <article class="editor">
+                <div class="editor-header">JSON код</div>
+                <label for="pollOutputText" class="sr-only">JSON код</label>
+                <textarea id="pollOutputText" spellcheck="false" readonly placeholder="Сгенерированный JSON появится здесь..."></textarea>
+            </article>
+        </section>
+    </main>
+
+    <div id="toast" class="toast" aria-live="polite"></div>
+
+    <script>
+        const pollInputEl = document.getElementById("pollInputText");
+        const pollOutputEl = document.getElementById("pollOutputText");
+        const pollErrorEl = document.getElementById("pollError");
+        const multipleChoiceToggleEl = document.getElementById("multipleChoiceToggle");
+        const pollCopyBtn = document.getElementById("pollCopyBtn");
+        const pollPasteBtn = document.getElementById("pollPasteBtn");
+        const pollClearBtn = document.getElementById("pollClearBtn");
+
+        const toastEl = document.getElementById("toast");
+        let toastTimer = null;
+
+        function showToast(message, isError = false) {
+            toastEl.textContent = message;
+            toastEl.classList.toggle("error", isError);
+            toastEl.classList.add("show");
+
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toastEl.classList.remove("show");
+            }, 2500);
+        }
+
+        function parsePollText(text) {
+            const lines = text
+                .split(/\r?\n/)
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0);
+
+            if (lines.length === 0) {
+                return null;
+            }
+
+            const [question, ...answerLines] = lines;
+            if (!question) {
+                throw new Error("Укажите вопрос в первой строке.");
+            }
+
+            if (answerLines.length === 0) {
+                throw new Error("Добавьте варианты ответа на новых строках.");
+            }
+
+            const answers = answerLines.map((line, index) => {
+                const match = line.match(/^(\S+)\s+(.+)$/u);
+                if (!match) {
+                    throw new Error(`Строка ${index + 2}: формат должен быть "эмодзи текст ответа".`);
+                }
+
+                const answer = match[2].trim();
+                if (!answer) {
+                    throw new Error(`Строка ${index + 2}: текст ответа не может быть пустым.`);
+                }
+
+                return {
+                    icon: match[1],
+                    answer
+                };
+            });
+
+            const payload = {
+                mode: "percent",
+                answers,
+                question,
+                needLogin: true
+            };
+
+            if (multipleChoiceToggleEl.checked) {
+                payload.isMultipleChoice = true;
+            }
+
+            return payload;
+        }
+
+        function generatePollCode() {
+            const rawText = pollInputEl.value;
+            pollErrorEl.textContent = "";
+
+            if (!rawText.trim()) {
+                pollOutputEl.value = "";
+                return;
+            }
+
+            try {
+                const payload = parsePollText(rawText);
+                pollOutputEl.value = payload ? JSON.stringify(payload, null, 2) : "";
+            } catch (error) {
+                pollOutputEl.value = "";
+                pollErrorEl.textContent = error.message || "Не удалось сгенерировать JSON.";
+            }
+        }
+
+        async function copyPollResult() {
+            const value = pollOutputEl.value;
+            if (!value.trim()) {
+                showToast("Пока нечего копировать.", true);
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(value);
+                showToast("JSON скопирован.");
+            } catch {
+                pollOutputEl.select();
+                document.execCommand("copy");
+                showToast("JSON скопирован.");
+            }
+        }
+
+        async function pastePollInput() {
+            try {
+                const text = await navigator.clipboard.readText();
+                pollInputEl.value = text;
+                generatePollCode();
+                showToast("Текст опроса вставлен из буфера.");
+            } catch {
+                showToast("Не удалось прочитать буфер обмена.", true);
+            }
+        }
+
+        function clearPollTab() {
+            pollInputEl.value = "";
+            pollOutputEl.value = "";
+            pollErrorEl.textContent = "";
+            multipleChoiceToggleEl.checked = false;
+            showToast("Поля очищены.");
+        }
+
+        pollInputEl.addEventListener("input", generatePollCode);
+        multipleChoiceToggleEl.addEventListener("change", generatePollCode);
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+                clearPollTab();
+                return;
+            }
+
+            if (event.ctrlKey && event.key === "Enter") {
+                generatePollCode();
+            }
+        });
+
+        pollCopyBtn.addEventListener("click", copyPollResult);
+        pollPasteBtn.addEventListener("click", pastePollInput);
+        pollClearBtn.addEventListener("click", clearPollTab);
+    </script>
+</body>
+</html>
