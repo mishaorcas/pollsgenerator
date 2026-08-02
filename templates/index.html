@@ -306,9 +306,9 @@
             }
 
             const answers = answerLines.map((line, index) => {
-                const match = line.match(/^(\S+)\s+(.+)$/u);
-                if (!match) {
-                    throw new Error(`Строка ${index + 2}: формат должен быть "эмодзи текст ответа".`);
+                 const match = line.match(/^([\p{Emoji_Presentation}\p{Extended_Pictographic}]+)\s*(.+)$/u);
+                 if (!match) {
+                     throw new Error(`Строка ${index + 2}: формат должен быть "эмодзи текст ответа" (пробел между эмодзи и текстом необязателен).`);
                 }
 
                 const answer = match[2].trim();
